@@ -32,6 +32,7 @@ services:
       FTLCONF_dns_reply_host_IPv4: '{{ ansible_facts["default_ipv4"]["address"] }}'
       FTLCONF_dns_listeningMode: 'SINGLE'
       FTLCONF_dns_interface: '{{ ansible_facts["default_ipv4"]["interface"] }}'
+      FTLCONF_database_maxDBdays: '30'
 {% if ssl_enable | default(false) %}
       FTLCONF_webserver_tls_cert: '/etc/pivpn-ssl/server.pem'
 {% endif %}
