@@ -130,3 +130,18 @@ services:
       - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
     networks:
       - back-tier
+
+{% if ai_server_enable | default(false) %}
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./otel/otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - 4317:4317
+      - 4318:4318
+      - 8889:8889
+    networks:
+      - back-tier
+{% endif %}

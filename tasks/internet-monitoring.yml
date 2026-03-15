@@ -44,6 +44,23 @@
   notify: Restart internet-monitoring
   become: false
 
+- name: Create OTel collector config directory.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/internet-monitoring/otel"
+    state: directory
+    mode: '0755'
+  become: false
+  when: ai_server_enable | default(false)
+
+- name: Copy OTel collector config.
+  ansible.builtin.template:
+    src: templates/otel-collector-config.yml.j2
+    dest: "{{ config_dir }}/internet-monitoring/otel/otel-collector-config.yml"
+    mode: '0644'
+  notify: Restart internet-monitoring
+  become: false
+  when: ai_server_enable | default(false)
+
 # become: true (root) is required because ansible_connection=local means
 # meta: reset_connection is a no-op — the docker group added earlier in the
 # play never activates in the current shell session. Root always has access

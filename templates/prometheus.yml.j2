@@ -81,6 +81,20 @@ scrape_configs:
       - targets: ['pihole-exporter:9617']
 {% endif %}
 
+{% if ai_server_enable | default(false) %}
+  - job_name: 'otel-collector'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['otel-collector:8889']
+
+{% for target in ai_server_gpu_targets | default([]) %}
+  - job_name: 'ai-gpu-{{ loop.index }}'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['{{ target }}']
+{% endfor %}
+{% endif %}
+
 {% filter indent(width=2,first=True) %}
 {{ prometheus_extra_scrape_configs }}
 {% endfilter %}

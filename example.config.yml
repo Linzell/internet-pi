@@ -66,3 +66,10 @@ wireguard_vpn_subnet: "24"
 wireguard_mtu: 1420
 wireguard_dns1: "192.168.1.3"  # Pi-hole for ad blocking over VPN
 wireguard_dns2: "8.8.8.8"
+
+# AI Server monitoring (OpenTelemetry Collector).
+# Deploys an OTel Collector that receives metrics from a remote AI server
+# and exposes them to Prometheus. (Also requires `monitoring_enable`)
+ai_server_enable: false  # Set to true when AI server is ready
+ai_server_gpu_targets:   # DCGM exporter targets on AI server(s)
+  # - '192.168.1.X:9835'
