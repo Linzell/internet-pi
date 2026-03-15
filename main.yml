@@ -1,0 +1,73 @@
+---
+- name: Configure Internet Pi.
+  hosts: internet_pi
+  become: true
+
+  pre_tasks:
+    - name: Load configuration (with defaults from example file).
+      ansible.builtin.include_vars: "{{ item }}"
+      loop:
+        - example.config.yml
+        - config.yml
+
+    - name: Resolve config_dir tilde to absolute path.
+      # '~' expands differently depending on which user runs each task (linzell vs root).
+      # We cannot use ansible_env.HOME here because the play has become: true, so facts
+      # are gathered as root and ansible_env.HOME = /root. Instead we use lookup('env','HOME')
+      # which reads from the ansible-playbook controller process environment (running as
+      # linzell) and is never affected by become.
+      ansible.builtin.set_fact:
+        config_dir: "{{ config_dir | regex_replace('^~', lookup('env', 'HOME')) }}"
+
+    - name: Ensure apt cache is up to date.
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+      when:
+        - ansible_facts.os_family == "Debian"
+
+    - name: Ensure pacman cache is up to date
+      community.general.pacman:
+        update_cache: true
+      when:
+        - ansible_facts.os_family == "Archlinux"
+
+  handlers:
+    - name: Include handlers.
+      ansible.builtin.import_tasks: tasks/handlers.yml
+
+  tasks:
+    - name: Setup Docker.
+      ansible.builtin.import_tasks: tasks/docker.yml
+
+    - name: Set up local SSL certificates.
+      ansible.builtin.import_tasks: tasks/ssl.yml
+      when: ssl_enable | default(false)
+
+    - name: Set up Internet Monitoring.
+      ansible.builtin.import_tasks: tasks/internet-monitoring.yml
+      when: monitoring_enable
+
+    - name: Set up Pi Hole.
+      ansible.builtin.import_tasks: tasks/pi-hole.yml
+      when: pihole_enable
+
+    - name: Set up Shelly Plug Monitoring.
+      ansible.builtin.import_tasks: tasks/shelly-plug.yml
+      when: shelly_plug_enable
+
+    - name: Set up Air Gradient Monitoring.
+      ansible.builtin.import_tasks: tasks/airgradient.yml
+      when: airgradient_enable
+
+    - name: Set up Starlink Monitoring.
+      ansible.builtin.import_tasks: tasks/starlink.yml
+      when: starlink_enable
+
+    - name: Set up DuckDNS dynamic DNS.
+      ansible.builtin.import_tasks: tasks/duckdns.yml
+      when: duckdns_enable
+
+    - name: Set up WireGuard VPN.
+      ansible.builtin.import_tasks: tasks/wireguard.yml
+      when: wireguard_enable

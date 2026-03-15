@@ -1,0 +1,111 @@
+---
+# Resolve wireguard_host before anything else.
+# Priority order when wireguard_host == 'auto':
+#   1. DuckDNS enabled → use duckdns_subdomain.duckdns.org (permanent, recommended)
+#   2. Fallback        → fetch current public IP from api.ipify.org (breaks on IP change)
+# If wireguard_host is already set to a real hostname/IP, all steps below are skipped.
+
+- name: Use DuckDNS hostname as WireGuard endpoint.
+  ansible.builtin.set_fact:
+    wireguard_host: "{{ duckdns_subdomain }}.duckdns.org"
+  when:
+    - wireguard_host == 'auto'
+    - duckdns_enable | default(false)
+
+- name: Auto-detect public IP address (fallback when DuckDNS is not enabled).
+  ansible.builtin.uri:
+    url: https://api.ipify.org?format=text
+    return_content: true
+  register: public_ip_result
+  when:
+    - wireguard_host == 'auto'
+    - not (duckdns_enable | default(false))
+
+- name: Set wireguard_host to detected public IP.
+  ansible.builtin.set_fact:
+    wireguard_host: "{{ public_ip_result.content | trim }}"
+  when:
+    - wireguard_host == 'auto'
+    - not (duckdns_enable | default(false))
+
+- name: Show resolved wireguard_host.
+  ansible.builtin.debug:
+    msg: "WireGuard endpoint will be configured as: {{ wireguard_host }}"
+
+- name: Check if PiVPN is already installed.
+  ansible.builtin.stat:
+    path: /usr/local/bin/pivpn
+  register: pivpn_installed
+
+- name: Install WireGuard kernel module and tools.
+  ansible.builtin.apt:
+    name:
+      - wireguard
+      - wireguard-tools
+      - iptables
+      - resolvconf
+    state: present
+  when: not pivpn_installed.stat.exists
+
+- name: Copy PiVPN unattended setup configuration.
+  ansible.builtin.template:
+    src: templates/pivpn-setupVars.conf.j2
+    dest: /tmp/pivpn-setupVars.conf
+    mode: '0600'
+  when: not pivpn_installed.stat.exists
+
+- name: Download PiVPN installer script.
+  ansible.builtin.get_url:
+    url: https://install.pivpn.io
+    dest: /tmp/pivpn-install.sh
+    mode: '0755'
+    force: true
+  when: not pivpn_installed.stat.exists
+
+- name: Debug - show ansible_user value.
+  ansible.builtin.debug:
+    msg: "ansible_user = '{{ ansible_user }}'"
+  when: not pivpn_installed.stat.exists
+
+- name: Debug - show rendered setupVars.conf content.
+  ansible.builtin.command: cat /tmp/pivpn-setupVars.conf
+  register: setupvars_debug
+  changed_when: false
+  when: not pivpn_installed.stat.exists
+
+- name: Debug - print setupVars.conf.
+  ansible.builtin.debug:
+    var: setupvars_debug.stdout_lines
+  when: not pivpn_installed.stat.exists
+
+- name: Run PiVPN unattended installer (this may take a few minutes).
+  ansible.builtin.command:
+    cmd: bash /tmp/pivpn-install.sh --unattended /tmp/pivpn-setupVars.conf
+  environment:
+    PIVPN_SKIP_UNATTENDED_CHECK: "true"
+  when: not pivpn_installed.stat.exists
+  register: pivpn_install_result
+  changed_when: pivpn_install_result.rc == 0
+
+- name: Clean up installer files.
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /tmp/pivpn-install.sh
+    - /tmp/pivpn-setupVars.conf
+  when: not pivpn_installed.stat.exists
+
+- name: Ensure WireGuard service is enabled and started.
+  ansible.builtin.service:
+    name: wg-quick@wg0
+    state: started
+    enabled: true
+
+- name: Ensure WireGuard port is open in UFW (if active).
+  community.general.ufw:
+    rule: allow
+    port: "{{ wireguard_port }}"
+    proto: udp
+  failed_when: false
+  changed_when: false

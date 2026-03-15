@@ -1,0 +1,157 @@
+---
+# Self-signed CA + server certificate generation for local-only HTTPS.
+# All files are stored under {{ config_dir }}/ssl/ and are only created
+# once (idempotent thanks to `creates:`).
+
+- name: Install openssl (Debian).
+  ansible.builtin.apt:
+    name: openssl
+    state: present
+  when: ansible_facts.os_family == "Debian"
+
+- name: Install openssl (Archlinux).
+  community.general.pacman:
+    name: openssl
+    state: present
+  when: ansible_facts.os_family == "Archlinux"
+
+- name: Create SSL directory.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/ssl"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  become: false
+
+# ---------------------------------------------------------------------------
+# CA (Certificate Authority) — self-signed, valid 10 years
+# ---------------------------------------------------------------------------
+
+- name: Generate CA private key.
+  ansible.builtin.command:
+    cmd: >-
+      openssl genrsa -out {{ config_dir }}/ssl/ca.key 2048
+    creates: "{{ config_dir }}/ssl/ca.key"
+  become: false
+
+- name: Set CA key permissions.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/ssl/ca.key"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  become: false
+
+- name: Generate CA certificate.
+  ansible.builtin.command:
+    cmd: >-
+      openssl req -x509 -new -nodes
+      -key {{ config_dir }}/ssl/ca.key
+      -sha256 -days 3650
+      -subj "/CN=Internet-Pi Local CA"
+      -out {{ config_dir }}/ssl/ca.crt
+    creates: "{{ config_dir }}/ssl/ca.crt"
+  become: false
+
+- name: Set CA certificate permissions.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/ssl/ca.crt"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  become: false
+
+# ---------------------------------------------------------------------------
+# Server certificate — signed by the local CA, valid 10 years
+# ---------------------------------------------------------------------------
+
+- name: Generate server private key.
+  ansible.builtin.command:
+    cmd: >-
+      openssl genrsa -out {{ config_dir }}/ssl/server.key 2048
+    creates: "{{ config_dir }}/ssl/server.key"
+  become: false
+
+- name: Set server key permissions.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/ssl/server.key"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  become: false
+
+# Build the SAN (Subject Alternative Name) list dynamically so the
+# certificate covers every name / IP we might access the Pi through.
+- name: Build SAN list for server certificate.
+  ansible.builtin.set_fact:
+    _ssl_san_list: >-
+      DNS:localhost,IP:127.0.0.1,IP:{{ ansible_facts["default_ipv4"]["address"] }}{% if pihole_enable | default(false) %},DNS:{{ pihole_hostname }}{% endif %}
+
+- name: Generate server CSR.
+  ansible.builtin.command:
+    cmd: >-
+      openssl req -new -nodes
+      -key {{ config_dir }}/ssl/server.key
+      -subj "/CN=internet-pi"
+      -addext "subjectAltName={{ _ssl_san_list }}"
+      -out {{ config_dir }}/ssl/server.csr
+    creates: "{{ config_dir }}/ssl/server.csr"
+  become: false
+
+- name: Create OpenSSL extensions file for SAN.
+  ansible.builtin.copy:
+    dest: "{{ config_dir }}/ssl/server-ext.cnf"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+    content: |
+      [v3_server]
+      subjectAltName={{ _ssl_san_list }}
+      basicConstraints=CA:FALSE
+      keyUsage=digitalSignature,keyEncipherment
+      extendedKeyUsage=serverAuth
+  become: false
+
+- name: Generate server certificate signed by CA.
+  ansible.builtin.command:
+    cmd: >-
+      openssl x509 -req
+      -in {{ config_dir }}/ssl/server.csr
+      -CA {{ config_dir }}/ssl/ca.crt
+      -CAkey {{ config_dir }}/ssl/ca.key
+      -CAcreateserial
+      -sha256 -days 3650
+      -extfile {{ config_dir }}/ssl/server-ext.cnf
+      -extensions v3_server
+      -out {{ config_dir }}/ssl/server.crt
+    creates: "{{ config_dir }}/ssl/server.crt"
+  become: false
+
+- name: Set server certificate permissions.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/ssl/server.crt"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  become: false
+
+# ---------------------------------------------------------------------------
+# Combined PEM — Pi-hole v6 expects cert + key in a single file
+# ---------------------------------------------------------------------------
+
+- name: Generate combined server.pem (cert + key).
+  ansible.builtin.shell:
+    cmd: >-
+      cat {{ config_dir }}/ssl/server.crt {{ config_dir }}/ssl/server.key
+      > {{ config_dir }}/ssl/server.pem
+    creates: "{{ config_dir }}/ssl/server.pem"
+  become: false
+
+- name: Set combined PEM permissions.
+  ansible.builtin.file:
+    path: "{{ config_dir }}/ssl/server.pem"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  become: false

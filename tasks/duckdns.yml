@@ -1,0 +1,22 @@
+---
+- name: Ensure curl is installed (required for DuckDNS updates).
+  ansible.builtin.apt:
+    name: curl
+    state: present
+
+- name: Deploy DuckDNS update script.
+  ansible.builtin.template:
+    src: templates/duckdns-update.sh.j2
+    dest: /usr/local/bin/duckdns-update
+    mode: "0755"
+
+- name: Set up cron job to update DuckDNS every 5 minutes.
+  ansible.builtin.cron:
+    name: "DuckDNS IP update"
+    minute: "*/5"
+    job: "/usr/local/bin/duckdns-update >/dev/null 2>&1"
+    state: present
+
+- name: Run DuckDNS update immediately.
+  ansible.builtin.command: /usr/local/bin/duckdns-update
+  changed_when: false

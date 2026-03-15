@@ -1,0 +1,17 @@
+# Ansible managed - PiVPN WireGuard unattended configuration
+IPv4dev={{ ansible_facts["default_ipv4"]["interface"] }}
+IPv6dev={{ ansible_facts["default_ipv4"]["interface"] }}
+VPN=wireguard
+pivpnNET={{ wireguard_vpn_net }}
+subnetClass={{ wireguard_vpn_subnet }}
+pivpnMTU={{ wireguard_mtu }}
+pivpnPORT={{ wireguard_port }}
+pivpnDNS1={{ wireguard_dns1 }}
+pivpnDNS2={{ wireguard_dns2 }}
+pivpnHOST={{ wireguard_host }}
+pivpnPROTOCOL=udp
+UNATTUPG=1
+pivpnforceipv6route=0
+pivpnDEV=wg0
+install_user={{ ansible_user }}
+INSTALLED_PACKAGES=()

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Ansible managed — DuckDNS IP updater
+# Runs every 5 minutes via cron to keep {{ duckdns_subdomain }}.duckdns.org
+# pointed at this machine's current public IP.
+
+RESULT=$(curl -fsSL \
+  "https://www.duckdns.org/update?domains={{ duckdns_subdomain }}&token={{ duckdns_token }}&ip=")
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') $RESULT" >> /var/log/duckdns.log

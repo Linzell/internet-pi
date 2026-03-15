@@ -1,0 +1,81 @@
+# {{ ansible_managed }}
+---
+networks:
+{% if domain_name_enable and domain_name and domain_pihole %}
+{# Make sure pihole and nginx-proxy are in the same network #}
+  front-tier:
+    name: internet-monitoring-front-tier
+    external: true
+{% endif %}
+{# pihole-exporter needs to share network with Prometheus #}
+  back-tier:
+    name: internet-monitoring-back-tier
+    external: true
+
+
+# More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    hostname: '{{ pihole_hostname }}'
+    # network_mode: host is required for DHCP to work correctly.
+    # Docker bridge networks cannot relay DHCP broadcast packets (255.255.255.255).
+    # With host networking, Pi-hole sits directly on the physical interface and can
+    # both see and respond to DHCP discovery broadcasts on the LAN.
+    # NOTE: ports/networks/dns keys are not compatible with network_mode: host.
+    network_mode: host
+    environment:
+      TZ: '{{ pihole_timezone }}'
+      FTLCONF_webserver_api_password: '{{ pihole_password }}'
+      FTLCONF_dns_reply_host_IPv4: '{{ ansible_facts["default_ipv4"]["address"] }}'
+      FTLCONF_dns_listeningMode: 'SINGLE'
+      FTLCONF_dns_interface: '{{ ansible_facts["default_ipv4"]["interface"] }}'
+{% if ssl_enable | default(false) %}
+      FTLCONF_webserver_tls_cert: '/etc/pivpn-ssl/server.pem'
+{% endif %}
+{% if domain_name_enable and domain_name and domain_pihole %}
+      VIRTUAL_HOST: {{ domain_pihole }}.{{ domain_name }}
+      VIRTUAL_PORT: 80
+      PROXY_LOCATION: {{ domain_pihole }}
+{% endif %}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - './etc-pihole/:/etc/pihole/'
+      - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
+{% if ssl_enable | default(false) %}
+      - '{{ config_dir }}/ssl/:/etc/pivpn-ssl/:ro'
+{% endif %}
+    cap_add:
+      - NET_ADMIN
+{% if domain_name_enable and domain_name %}
+    extra_hosts:
+      - "{{ domain_name }}:{{ ansible_facts['default_ipv4']['address'] }}"
+{% if domain_name_enable and domain_name and domain_pihole %}
+      - "{{ domain_pihole }}.{{ domain_name }}:{{ ansible_facts['default_ipv4']['address'] }}"
+{% endif %}
+{% if domain_name_enable and domain_name and domain_grafana %}
+      - "{{ domain_grafana }}.{{ domain_name }}:{{ ansible_facts['default_ipv4']['address'] }}"
+{% endif %}
+{% if domain_name_enable and domain_name and domain_prometheus %}
+      - "{{ domain_prometheus }}.{{ domain_name }}:{{ ansible_facts['default_ipv4']['address'] }}"
+{% endif %}
+{% endif %}
+
+  pihole-exporter:
+    container_name: pihole-exporter
+    image: ekofr/pihole-exporter:latest
+    restart: unless-stopped
+    hostname: 'pihole-exporter'
+    networks:
+      - back-tier
+    ports:
+      - "9617:9617"
+    environment:
+      # Pi-hole uses network_mode: host so it is not reachable via Docker service
+      # name on back-tier. Use the host's physical IP instead.
+      PIHOLE_HOSTNAME: '{{ ansible_facts["default_ipv4"]["address"] }}'
+      PIHOLE_PASSWORD: '{{ pihole_password }}'
+      INTERVAL: '30s'
+      PORT: 9617
