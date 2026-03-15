@@ -604,10 +604,11 @@
       "targets": [
         {
           "expr": "rate(inference_duration_milliseconds_sum{task_name=~\"$model\"}[5m]) / rate(inference_duration_milliseconds_count{task_name=~\"$model\"}[5m])",
-          "legendFormat": "{{task_name}}",
+          "legendFormat": "{{task_name}} ({{backend}})",
           "refId": "A"
         }
       ],
+      "title": "Average Inference Latency (ms)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -683,10 +684,11 @@
       "targets": [
         {
           "expr": "rate(inference_requests_total{task_name=~\"$model\"}[5m])",
-          "legendFormat": "{{task_name}}",
+          "legendFormat": "{{task_name}} ({{backend}})",
           "refId": "A"
         }
       ],
+      "title": "Requests per Second",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -773,11 +775,12 @@
       },
       "targets": [
         {
-          "expr": "rate(inference_requests_total{task_name=~\"$model\"}[5m])",
-          "legendFormat": "{{task_name}} - {{backend}}",
+          "expr": "inference_requests_total{task_name=~\"$model\"}",
+          "legendFormat": "{{task_name}} ({{backend}})",
           "refId": "A"
         }
       ],
+      "title": "Total Requests",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -852,11 +855,12 @@
       },
       "targets": [
         {
-          "expr": "rate(inference_duration_milliseconds_count{task_name=~\"$model\"}[5m]) - rate(inference_duration_milliseconds_count{task_name=~\"$model\"}[5m])",
-          "legendFormat": "{{task_name}}",
+          "expr": "inference_model_memory_bytes{task_name=~\"$model\"}",
+          "legendFormat": "{{task_name}} ({{backend}})",
           "refId": "A"
         }
       ],
+      "title": "Model Memory",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -898,7 +902,7 @@
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "bytes"
         },
         "overrides": []
       },
@@ -931,11 +935,12 @@
       },
       "targets": [
         {
-          "expr": "inference_requests_total{task_name=~\"$model\"}",
-          "legendFormat": "{{task_name}} ({{backend}})",
+          "expr": "inference_gpu_usage_percent{task_name=~\"$model\"}",
+          "legendFormat": "{{task_name}} ({{device}})",
           "refId": "A"
         }
       ],
+      "title": "GPU Usage (%)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -977,7 +982,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -1022,11 +1027,17 @@
       },
       "targets": [
         {
-          "expr": "inference_duration_milliseconds_sum{task_name=~\"$model\"} / inference_duration_milliseconds_count{task_name=~\"$model\"}",
-          "legendFormat": "{{task_name}} avg",
+          "expr": "histogram_quantile(0.95, rate(inference_duration_milliseconds_bucket{task_name=~\"$model\"}[5m]))",
+          "legendFormat": "p95 {{task_name}}",
           "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.50, rate(inference_duration_milliseconds_bucket{task_name=~\"$model\"}[5m]))",
+          "legendFormat": "p50 {{task_name}}",
+          "refId": "B"
         }
       ],
+      "title": "Inference Latency Percentiles (ms)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1068,7 +1079,7 @@
               }
             ]
           },
-          "unit": "bytes"
+          "unit": "ms"
         },
         "overrides": []
       },
