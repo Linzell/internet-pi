@@ -1112,8 +1112,8 @@
       },
       "targets": [
         {
-          "expr": "DCGM_FI_DEV_POWER_USAGE{instance=~\"$server\"}",
-          "legendFormat": "GPU {{gpu}}",
+          "expr": "inference_gpu_power_watts{task_name=~\"$model\"}",
+          "legendFormat": "{{task_name}} ({{device}})",
           "refId": "A"
         }
       ],
