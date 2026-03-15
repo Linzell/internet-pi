@@ -60,7 +60,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -122,7 +122,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -184,7 +184,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -246,7 +246,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -342,7 +342,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -421,7 +421,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -500,7 +500,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -599,12 +599,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
-          "expr": "rate(ai_model_inference_duration_sum{model_name=~\"$model\"}[5m]) / rate(ai_model_inference_duration_count{model_name=~\"$model\"}[5m])",
-          "legendFormat": "{{model_name}}",
+          "expr": "rate(inference_duration_milliseconds_sum{task_name=~\"$model\"}[5m]) / rate(inference_duration_milliseconds_count{task_name=~\"$model\"}[5m])",
+          "legendFormat": "{{task_name}}",
           "refId": "A"
         }
       ],
@@ -678,12 +678,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
-          "expr": "rate(ai_model_tokens_generated_total{model_name=~\"$model\"}[5m])",
-          "legendFormat": "{{model_name}}",
+          "expr": "rate(inference_requests_total{task_name=~\"$model\"}[5m])",
+          "legendFormat": "{{task_name}}",
           "refId": "A"
         }
       ],
@@ -769,12 +769,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
-          "expr": "rate(ai_model_requests_total{model_name=~\"$model\"}[5m])",
-          "legendFormat": "{{model_name}} - {{status}}",
+          "expr": "rate(inference_requests_total{task_name=~\"$model\"}[5m])",
+          "legendFormat": "{{task_name}} - {{backend}}",
           "refId": "A"
         }
       ],
@@ -848,12 +848,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
-          "expr": "rate(ai_model_requests_total{model_name=~\"$model\",status=\"error\"}[5m]) / rate(ai_model_requests_total{model_name=~\"$model\"}[5m])",
-          "legendFormat": "{{model_name}}",
+          "expr": "rate(inference_duration_milliseconds_count{task_name=~\"$model\"}[5m]) - rate(inference_duration_milliseconds_count{task_name=~\"$model\"}[5m])",
+          "legendFormat": "{{task_name}}",
           "refId": "A"
         }
       ],
@@ -927,12 +927,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
-          "expr": "ai_model_queue_depth{model_name=~\"$model\"}",
-          "legendFormat": "{{model_name}}",
+          "expr": "inference_requests_total{task_name=~\"$model\"}",
+          "legendFormat": "{{task_name}} ({{backend}})",
           "refId": "A"
         }
       ],
@@ -1018,12 +1018,12 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
-          "expr": "ai_model_memory_allocated_bytes{model_name=~\"$model\"}",
-          "legendFormat": "{{model_name}}",
+          "expr": "inference_duration_milliseconds_sum{task_name=~\"$model\"} / inference_duration_milliseconds_count{task_name=~\"$model\"}",
+          "legendFormat": "{{task_name}} avg",
           "refId": "A"
         }
       ],
@@ -1097,7 +1097,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
+        "uid": "P1809F7CD0C75ACF3"
       },
       "targets": [
         {
@@ -1183,18 +1183,18 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "P1809F7CD0C75ACF3"
         },
-        "definition": "label_values(model_name)",
+        "definition": "label_values(inference_requests_total, task_name)",
         "hide": 0,
         "includeAll": true,
-        "label": "Model",
+        "label": "Task",
         "multi": true,
         "name": "model",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(model_name)",
+          "query": "label_values(inference_requests_total, task_name)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -1212,18 +1212,18 @@
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
+          "uid": "P1809F7CD0C75ACF3"
         },
-        "definition": "label_values(instance)",
+        "definition": "label_values(node_cpu_seconds_total{instance!~\"nodeexp:9100|localhost:.*\"}, instance)",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Server",
         "multi": false,
         "name": "server",
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(instance)",
+          "query": "label_values(node_cpu_seconds_total{instance!~\"nodeexp:9100|localhost:.*\"}, instance)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
