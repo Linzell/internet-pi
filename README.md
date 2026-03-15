@@ -41,7 +41,7 @@ export PATH=$PATH:~/.local/bin
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/geerlingguy/internet-pi.git
+git clone https://github.com/Linzell/internet-pi
 cd internet-pi
 ```
 
